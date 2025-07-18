@@ -1,0 +1,35 @@
+version: "3.8" # 3.8 이상 버전을 권장합니다. healthcheck를 depends_on에서 사용하려면
+services:
+  mysql_container_service:
+    container_name: mysql_container
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: "root"
+      MYSQL_USER: "asac"
+      MYSQL_PASSWORD: "1234"
+      MYSQL_DATABASE: "example"
+    ports:
+      - 33066:3306
+    networks:
+      - rc-network
+    healthcheck: # MySQL Healthcheck 추가
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-proot"] # root 계정으로 ping 테스트
+      interval: 10s # 10초마다 체크
+      timeout: 5s # 5초 안에 응답 없으면 실패
+      retries: 5 # 5번 실패 시 unhealthy
+      start_period: 30s # 컨테이너 시작 후 30초 동안은 healthcheck 실패해도 unhealthy로 간주하지 않음
+
+  spring_container_service:
+    container_name: spring_container
+    build: .
+    ports:
+      - 1000:8080
+    networks:
+      - rc-network
+    depends_on:
+      mysql_container_service:
+        condition: service_healthy # mysql_container_service가 healthy 상태가 될 때까지 기다림
+
+networks:
+  rc-network:
+    driver: bridge
